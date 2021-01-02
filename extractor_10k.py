@@ -149,7 +149,7 @@ def get_10k_items(soup_10k):
         return item_tags_clean
     
     def extract_risk_factors(item_1a_tags):
-        tags = []
+        tags = item_1a_tags
         
         # delete any non-emphasized leading tags and any emphasized trailing tags so that we are left
         # with list guaranteed to start with emphasized tag and end with non-emphasized tag        
