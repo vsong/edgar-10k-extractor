@@ -34,7 +34,7 @@ with open('out.json', 'w') as w:
     w.write(json.dumps(results, indent=2))
 ```
 
-## Output (truncated):
+### Output (truncated):
 ```json
 {
   "extractor_version": 202012300,
