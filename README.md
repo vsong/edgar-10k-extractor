@@ -1,5 +1,5 @@
 # edgar-10k-extractor
-A simple function I wrote that detects and extracts individual Items as well as Item 1A risk factors from an HTML 10-K filing downloaded from edgar.
+A simple function that detects and extracts individual Items as well as Item 1A risk factors from an HTML 10-K filing downloaded from edgar.
 
 Written in Python 3.5.
 
