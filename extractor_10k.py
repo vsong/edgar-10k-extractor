@@ -2,8 +2,6 @@ import re
 import sys
 from bs4 import BeautifulSoup, NavigableString, Tag
 
-EXTRACTOR_VERSION = 21010200 #yymmddxx
-
 def get_10k_items(soup_10k):
     """Locates items in a HTML-based Form 10K and extracts the text of every item found and identified risk factors from Item 1A.
     
@@ -266,8 +264,7 @@ def get_10k_items(soup_10k):
             tag.extract()
         
     all_10k_tags = soup_10k.find_all()
-    results = {'extractor_version' : EXTRACTOR_VERSION,
-               'whole_text' : sanitize(soup_10k.text)}
+    results = {'whole_text' : sanitize(soup_10k.text)}
         
     for k in item_regex_tuples:
         regex_tuple = item_regex_tuples[k]
@@ -281,6 +278,6 @@ def get_10k_items(soup_10k):
     
     if risk_factors:
         results['risk_factors'] = risk_factors
-        results['risk_factors_found'] = len(risk_factors)
+        results['num_risk_factors'] = len(risk_factors)
     
     return results
