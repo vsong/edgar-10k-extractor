@@ -2,6 +2,8 @@ import re
 import sys
 from bs4 import BeautifulSoup, NavigableString, Tag
 
+EXTRACTOR_VERSION = 21010200 #yymmddxx
+
 def get_10k_items(soup_10k):
     """Locates items in a HTML-based Form 10K and extracts the text of every item found and identified risk factors from Item 1A.
     
@@ -209,7 +211,6 @@ def get_10k_items(soup_10k):
             
         return text_list
     
-    EXTRACTOR_VERSION = 202012300
     item_1_regex  = re.compile(r'^\s*item[^a-z0-9]*1[^a-z0-9][^0-9]*business[^0-9]*$', re.IGNORECASE)
     item_1A_regex = re.compile(r'^\s*item[^a-z0-9]*1A[^a-z]*risk[^a-z]*factors?[^a-z0-9]?\s*$', re.IGNORECASE)
     item_1B_regex = re.compile(r'^\s*item[^a-z0-9]*1B[^a-z0-9][^0-9]*(unresolved|staff|comment)[^0-9]*$', re.IGNORECASE)
