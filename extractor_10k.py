@@ -271,7 +271,7 @@ def get_10k_items(soup_10k):
         result = get_item_tags(all_10k_tags, regex_tuple[0], regex_tuple[1])
         
         if result:
-            results[k+'_text'] = '\n'.join(tags_to_str_list(result))
+            results[k] = '\n'.join(tags_to_str_list(result))
             
     item_1a_tags = get_item_tags(all_10k_tags, item_regex_tuples['item_1a'][0], item_regex_tuples['item_1a'][1])
     risk_factors = extract_risk_factors(item_1a_tags)
