@@ -37,7 +37,6 @@ with open('out.json', 'w') as w:
 ### Output (truncated):
 ```json
 {
-  "extractor_version": 202012300,
   "whole_text": "Form 10-K\n\n\nTable of Contents\n \n  UNITED STATES \nSECURITIES AND EXCHANGE COM ...",
   "item_1_text": "Company Background\nThe Company designs, manufactures, and markets mobile communi ...",
   "item_1a_text": "The following discussion of risk factors contains forward-looking statements. Th ...",
