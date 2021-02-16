@@ -1,12 +1,13 @@
 import re
 import sys
+import pdb
 from bs4 import BeautifulSoup, NavigableString, Tag
 
-def get_10k_items(soup_10k):
+def get_10k_items(text_10k):
     """Locates items in a HTML-based Form 10K and extracts the text of every item found and identified risk factors from Item 1A.
     
     Args:
-        soup_10k: BeautifulSoup object of the HTML-based Form 10K
+        text: String contents of the Form 10K, either in plaintext format or in HTML.
     Returns:
         Dictionary containing any items found and identified risk factors.
     """
@@ -209,6 +210,45 @@ def get_10k_items(soup_10k):
             
         return text_list
     
+    def get_alt_filing_period(text):
+        alt_filing_period_regex = re.compile(r'for the (fiscal )?year ended[^\w](.+?\d{4})', re.IGNORECASE | re.MULTILINE)
+        date_regex = re.compile(r'([a-z]+) (\d\d?), (\d{4})', re.IGNORECASE)
+        month_dict = {'january' : '01',
+                      'february' : '02',
+                      'march' : '03',
+                      'april' : '04',
+                      'may' : '05',
+                      'june' : '06',
+                      'july' : '07',
+                      'august' : '08',
+                      'september' : '09',
+                      'october' : '10',
+                      'november' : '11',
+                      'december' : '12'}
+        
+        text_search = re.search(alt_filing_period_regex, text)
+        if text_search:
+            date_search = re.search(date_regex, text_search.group(2))
+            if date_search:
+                year = date_search.group(3)
+                
+                day = date_search.group(2)
+                if len(day) == 1:
+                    day = '0' + day
+                
+                month_text = date_search.group(1).lower()
+                for k, v in month_dict.items():
+                    if k in month_text:
+                        month = v
+                        break
+        
+        try:
+            return '{}{}{}'.format(year, month, day)
+        except:
+            return None
+        
+    # Main function start
+    href_regex = re.compile(r'^\s*item[^a-z0-9]*\d{1,2}[AB]?', re.IGNORECASE)
     item_1_regex  = re.compile(r'^\s*item[^a-z0-9]*1[^a-z0-9][^0-9]*business[^0-9]*$', re.IGNORECASE)
     item_1A_regex = re.compile(r'^\s*item[^a-z0-9]*1A[^a-z]*risk[^a-z]*factors?[^a-z0-9]?\s*$', re.IGNORECASE)
     item_1B_regex = re.compile(r'^\s*item[^a-z0-9]*1B[^a-z0-9][^0-9]*(unresolved|staff|comment)[^0-9]*$', re.IGNORECASE)
@@ -229,7 +269,7 @@ def get_10k_items(soup_10k):
     item_13_regex = re.compile(r'^\s*item[^a-z0-9]*13[^a-z0-9][^0-9]*(relationship|transaction|director|independence)[^0-9]*$', re.IGNORECASE)
     item_14_regex = re.compile(r'^\s*item[^a-z0-9]*14[^a-z0-9][^0-9]*(principal|accounting|fee|service)[^0-9]*$', re.IGNORECASE)
     item_15_regex = re.compile(r'^\s*item[^a-z0-9]*15[^a-z0-9][^0-9]*(exhibit|schedule|statement)[^0-9]*$', re.IGNORECASE)
-    href_regex = re.compile(r'^\s*item[^a-z0-9]*\d{1,2}[AB]?', re.IGNORECASE)
+
     item_regex_tuples = {'item_1'  : (item_1_regex , [item_1A_regex, item_1B_regex, item_2_regex]),
                          'item_1a' : (item_1A_regex, [item_1B_regex, item_2_regex]),
                          'item_1b' : (item_1B_regex, [item_2_regex]),
@@ -250,39 +290,54 @@ def get_10k_items(soup_10k):
                          'item_13' : (item_13_regex, [item_14_regex]),
                          'item_14' : (item_14_regex, [item_15_regex])}
     
-    # remove all a hrefs containing item header text
-    for tag in soup_10k.find_all():
-        try:
-            if tag.name == 'a' and tag['href'].strip() != '' and re.search(href_regex, tag.text) and not tag.has_attr('name'):
-                tag.string = ''
-        except KeyError:
-            pass
+    if '<html' in text_10k.lower():
+        soup = BeautifulSoup(text_10k, 'lxml') # Use lxml parser for best results.
     
-    # remove table of contents
-    for tag in soup_10k.find_all('table'):
-        if len(tag.find_all('tr', recursive=False)) > 12 and tag.text.lower().count('item') > 12:
-            tag.extract()
+        # remove all a hrefs containing item header text
+        for tag in soup.find_all():
+            try:
+                if tag.name == 'a' and tag['href'].strip() != '' and re.search(href_regex, tag.text) and not tag.has_attr('name'):
+                    tag.string = ''
+            except KeyError:
+                pass
         
-    all_10k_tags = soup_10k.find_all()
-    results = {'whole_text' : sanitize(soup_10k.text)}
-        
-    for k in item_regex_tuples:
-        regex_tuple = item_regex_tuples[k]
-        result = get_item_tags(all_10k_tags, regex_tuple[0], regex_tuple[1])
-        
-        if result:
-            results[k] = '\n'.join(tags_to_str_list(result))
-            results[k+'_html'] = '\n'.join([str(tag) for tag in result])
-            results[h+'_extraction_algorithm'] = 'html'
-            continue
-
-        #TODO: add text regex extraction
+        # remove table of contents
+        for tag in soup.find_all('table'):
+            if len(tag.find_all('tr', recursive=False)) > 12 and tag.text.lower().count('item') > 12:
+                tag.extract()
             
-    item_1a_tags = get_item_tags(all_10k_tags, item_regex_tuples['item_1a'][0], item_regex_tuples['item_1a'][1])
-    risk_factors = extract_risk_factors(item_1a_tags)
+        all_10k_tags = soup.find_all()
+        results = {'whole_text' : sanitize(soup.text),
+                   'content_type' : 'html'}
+            
+        for k in item_regex_tuples:
+            regex_tuple = item_regex_tuples[k]
+            item_result = get_item_tags(all_10k_tags, regex_tuple[0], regex_tuple[1])
+            
+            if item_result:
+                results[k] = '\n'.join(tags_to_str_list(item_result))
+                #results['i_'+k+'_html'] = '\n'.join([str(tag) for tag in item_result])
+                results['i_'+k+'_extraction_algorithm'] = 'html'
+                continue
     
-    if risk_factors:
-        results['risk_factors'] = risk_factors
-        results['num_risk_factors'] = len(risk_factors)
+            #TODO: add text regex extraction
+                
+        item_1a_tags = get_item_tags(all_10k_tags, item_regex_tuples['item_1a'][0], item_regex_tuples['item_1a'][1])
+        risk_factors = extract_risk_factors(item_1a_tags)
+        
+        if risk_factors:
+            results['risk_factors'] = risk_factors
+            results['num_risk_factors'] = len(risk_factors)
+    else:
+        # TODO: plain text regex extraction
+        results = {'whole_text' : text_10k,
+                   'content_type' : 'text'}
+    
+    alt_filing_period = get_alt_filing_period(results['whole_text'])
+    if alt_filing_period:
+            results['alt_filing_period'] = alt_filing_period
+    else:
+        print(results['whole_text'])
+        pdb.set_trace()
     
     return results
