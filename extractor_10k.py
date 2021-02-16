@@ -336,8 +336,5 @@ def get_10k_items(text_10k):
     alt_filing_period = get_alt_filing_period(results['whole_text'])
     if alt_filing_period:
             results['alt_filing_period'] = alt_filing_period
-    else:
-        print(results['whole_text'])
-        pdb.set_trace()
-    
+
     return results
