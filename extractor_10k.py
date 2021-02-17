@@ -350,7 +350,6 @@ def get_10k_items(text_10k):
             if item_result_plaintext:
                 results[k] = item_result_plaintext
                 results[f'i_{k}_extraction_algorithm'] = 'text_regex'
-                pdb.set_trace()
                 
         item_1a_tags = get_item_tags(all_10k_tags, item_regex_tuples['item_1a'][0], item_regex_tuples['item_1a'][1])
         risk_factors = extract_risk_factors(item_1a_tags)
