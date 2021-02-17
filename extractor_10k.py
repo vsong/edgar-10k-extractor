@@ -82,7 +82,7 @@ def get_10k_items(text_10k):
                 continue
             
             # check if the tag text contains regex
-            if re.search(text_regex, sanitize(tag.text)) is None:
+            if re.search(text_regex, sanitize(tag.text), re.IGNORECASE) is None:
                 continue
             
             # at this point the tag is found. but if the tag is a table row, then
@@ -95,6 +95,7 @@ def get_10k_items(text_10k):
         return None
     
     def get_item_tags(tags, start_regex, end_regexes):
+        """Returns the HTML tags belonging to a 10-K item between the tags found by start_regex and the first end_regexes found"""
         item_header  = find_item_header(tags, start_regex)
         
         for end_regex in end_regexes:
@@ -148,6 +149,29 @@ def get_10k_items(text_10k):
                 item_tags_clean.append(tag)
         
         return item_tags_clean
+    
+    def get_item_plain_text(text, start_regex, end_regexes):
+        """Returns the text belonging to a 10-K item between the lines found by start_regex and the first end_regexes found"""
+        text = sanitize(text)
+        item_header = re.search(start_regex, text, re.IGNORECASE | re.MULTILINE)
+        
+        for end_regex in end_regexes:
+            next_item_header = re.search(end_regex, text, re.IGNORECASE | re.MULTILINE)
+            if next_item_header is not None:
+                break
+        
+        if item_header is None or next_item_header is None:
+            return None
+        
+        if next_item_header.start() <= item_header.end():
+            return None
+        
+        item_text = text[item_header.end():next_item_header.start()]
+        
+        if len(item_text) < 5:
+            return None
+
+        return item_text.strip()
     
     def extract_risk_factors(item_1a_tags):
         tags = item_1a_tags
@@ -249,26 +273,26 @@ def get_10k_items(text_10k):
         
     # Main function start
     href_regex = re.compile(r'^\s*item[^a-z0-9]*\d{1,2}[AB]?', re.IGNORECASE)
-    item_1_regex  = re.compile(r'^\s*item[^a-z0-9]*1[^a-z0-9][^0-9]*business[^0-9]*$', re.IGNORECASE)
-    item_1A_regex = re.compile(r'^\s*item[^a-z0-9]*1A[^a-z]*risk[^a-z]*factors?[^a-z0-9]?\s*$', re.IGNORECASE)
-    item_1B_regex = re.compile(r'^\s*item[^a-z0-9]*1B[^a-z0-9][^0-9]*(unresolved|staff|comment)[^0-9]*$', re.IGNORECASE)
-    item_2_regex  = re.compile(r'^\s*item[^a-z0-9]*2[^a-z0-9][^0-9]*(property|properties)[^0-9]*$', re.IGNORECASE)
-    item_3_regex  = re.compile(r'^\s*item[^a-z0-9]*3[^a-z0-9][^0-9]*(legal|proceedings)[^0-9]*$', re.IGNORECASE)
-    item_4_regex  = re.compile(r'^\s*item[^a-z0-9]*4[^a-z0-9][^0-9]*(mine|safety)[^0-9]*$', re.IGNORECASE)
-    item_5_regex  = re.compile(r'^\s*item[^a-z0-9]*5[^a-z0-9][^0-9]*(equity|stockholder)[^0-9]*$', re.IGNORECASE)
-    item_6_regex  = re.compile(r'^\s*item[^a-z0-9]*6[^a-z0-9][^0-9]*(selected|financial|data)[^0-9]*$', re.IGNORECASE)
-    item_7_regex  = re.compile(r'^\s*item[^a-z0-9]*7[^a-z0-9][^0-9]*(management|discussion|analysis)[^0-9]*$', re.IGNORECASE)
-    item_7A_regex = re.compile(r'^\s*item[^a-z0-9]*7A[^a-z0-9][^0-9]*(quantitative|qualitative|disclosure)[^0-9]*$', re.IGNORECASE)
-    item_8_regex  = re.compile(r'^\s*item[^a-z0-9]*8[^a-z0-9][^0-9]*(financial|statements|supplementary|data)[^0-9]*$', re.IGNORECASE)
-    item_9_regex  = re.compile(r'^\s*item[^a-z0-9]*9[^a-z0-9][^0-9]*(changes|disagreement|account)[^0-9]*$', re.IGNORECASE)
-    item_9A_regex = re.compile(r'^\s*item[^a-z0-9]*9A[^a-z0-9][^0-9]*(control|procedure)[^0-9]*$', re.IGNORECASE)
-    item_9B_regex = re.compile(r'^\s*item[^a-z0-9]*9B[^a-z0-9][^0-9]*(other|information)[^0-9]*$', re.IGNORECASE)
-    item_10_regex = re.compile(r'^\s*item[^a-z0-9]*10[^a-z0-9][^0-9]*(director|executive|officer|governance)[^0-9]*$', re.IGNORECASE)
-    item_11_regex = re.compile(r'^\s*item[^a-z0-9]*11[^a-z0-9][^0-9]*(executive|compensation)[^0-9]*$', re.IGNORECASE)
-    item_12_regex = re.compile(r'^\s*item[^a-z0-9]*12[^a-z0-9][^0-9]*(security|beneficial|stockholder|owner|management)[^0-9]*$', re.IGNORECASE)
-    item_13_regex = re.compile(r'^\s*item[^a-z0-9]*13[^a-z0-9][^0-9]*(relationship|transaction|director|independence)[^0-9]*$', re.IGNORECASE)
-    item_14_regex = re.compile(r'^\s*item[^a-z0-9]*14[^a-z0-9][^0-9]*(principal|accounting|fee|service)[^0-9]*$', re.IGNORECASE)
-    item_15_regex = re.compile(r'^\s*item[^a-z0-9]*15[^a-z0-9][^0-9]*(exhibit|schedule|statement)[^0-9]*$', re.IGNORECASE)
+    item_1_regex  = r'^\s*item[^a-z0-9]*1[^a-z0-9][^0-9]*business[^0-9]*$'
+    item_1A_regex = r'^\s*item[^a-z0-9]*1A[^a-z]*risk[^a-z]*factors?[^a-z0-9]?\s*$'
+    item_1B_regex = r'^\s*item[^a-z0-9]*1B[^a-z0-9][^0-9]*(unresolved|staff|comment)[^0-9]*$'
+    item_2_regex  = r'^\s*item[^a-z0-9]*2[^a-z0-9][^0-9]*(property|properties)[^0-9]*$'
+    item_3_regex  = r'^\s*item[^a-z0-9]*3[^a-z0-9][^0-9]*(legal|proceedings)[^0-9]*$'
+    item_4_regex  = r'^\s*item[^a-z0-9]*4[^a-z0-9][^0-9]*(mine|safety)[^0-9]*$'
+    item_5_regex  = r'^\s*item[^a-z0-9]*5[^a-z0-9][^0-9]*(equity|stockholder)[^0-9]*$'
+    item_6_regex  = r'^\s*item[^a-z0-9]*6[^a-z0-9][^0-9]*(selected|financial|data)[^0-9]*$'
+    item_7_regex  = r'^\s*item[^a-z0-9]*7[^a-z0-9][^0-9]*(management|discussion|analysis)[^0-9]*$'
+    item_7A_regex = r'^\s*item[^a-z0-9]*7A[^a-z0-9][^0-9]*(quantitative|qualitative|disclosure)[^0-9]*$'
+    item_8_regex  = r'^\s*item[^a-z0-9]*8[^a-z0-9][^0-9]*(financial|statements|supplementary|data)[^0-9]*$'
+    item_9_regex  = r'^\s*item[^a-z0-9]*9[^a-z0-9][^0-9]*(changes|disagreement|account)[^0-9]*$'
+    item_9A_regex = r'^\s*item[^a-z0-9]*9A[^a-z0-9][^0-9]*(control|procedure)[^0-9]*$'
+    item_9B_regex = r'^\s*item[^a-z0-9]*9B[^a-z0-9][^0-9]*(other|information)[^0-9]*$'
+    item_10_regex = r'^\s*item[^a-z0-9]*10[^a-z0-9][^0-9]*(director|executive|officer|governance)[^0-9]*$'
+    item_11_regex = r'^\s*item[^a-z0-9]*11[^a-z0-9][^0-9]*(executive|compensation)[^0-9]*$'
+    item_12_regex = r'^\s*item[^a-z0-9]*12[^a-z0-9][^0-9]*(security|beneficial|stockholder|owner|management)[^0-9]*$'
+    item_13_regex = r'^\s*item[^a-z0-9]*13[^a-z0-9][^0-9]*(relationship|transaction|director|independence)[^0-9]*$'
+    item_14_regex = r'^\s*item[^a-z0-9]*14[^a-z0-9][^0-9]*(principal|accounting|fee|service)[^0-9]*$'
+    item_15_regex = r'^\s*item[^a-z0-9]*15[^a-z0-9][^0-9]*(exhibit|schedule|statement)[^0-9]*$'
 
     item_regex_tuples = {'item_1'  : (item_1_regex , [item_1A_regex, item_1B_regex, item_2_regex]),
                          'item_1a' : (item_1A_regex, [item_1B_regex, item_2_regex]),
@@ -306,21 +330,27 @@ def get_10k_items(text_10k):
             if len(tag.find_all('tr', recursive=False)) > 12 and tag.text.lower().count('item') > 12:
                 tag.extract()
             
-        all_10k_tags = soup.find_all()
-        results = {'whole_text' : sanitize(soup.text),
+        # get whole text of document and sanitize
+        whole_text = sanitize(soup.text)
+        whole_text = re.sub('\n[ \t]*\d+[ \t]*\n', '\n', whole_text)
+        results = {'whole_text' : whole_text,
                    'content_type' : 'html'}
             
-        for k in item_regex_tuples:
-            regex_tuple = item_regex_tuples[k]
+        all_10k_tags = soup.find_all()
+        
+        for k, regex_tuple in item_regex_tuples.items():
             item_result = get_item_tags(all_10k_tags, regex_tuple[0], regex_tuple[1])
-            
             if item_result:
                 results[k] = '\n'.join(tags_to_str_list(item_result))
                 #results['i_'+k+'_html'] = '\n'.join([str(tag) for tag in item_result])
-                results['i_'+k+'_extraction_algorithm'] = 'html'
+                results[f'i_{k}_extraction_algorithm'] = 'html'
                 continue
     
-            #TODO: add text regex extraction
+            item_result_plaintext = get_item_plain_text(results['whole_text'], regex_tuple[0], regex_tuple[1])
+            if item_result_plaintext:
+                results[k] = item_result_plaintext
+                results[f'i_{k}_extraction_algorithm'] = 'text_regex'
+                pdb.set_trace()
                 
         item_1a_tags = get_item_tags(all_10k_tags, item_regex_tuples['item_1a'][0], item_regex_tuples['item_1a'][1])
         risk_factors = extract_risk_factors(item_1a_tags)
@@ -329,9 +359,18 @@ def get_10k_items(text_10k):
             results['risk_factors'] = risk_factors
             results['num_risk_factors'] = len(risk_factors)
     else:
-        # TODO: plain text regex extraction
-        results = {'whole_text' : text_10k,
-                   'content_type' : 'text'}
+        results = {'whole_text' : sanitize(text_10k),
+                   'content_type' : 'plaintext'}
+        
+        text_10k = re.sub('\n[ \t]*\d+[ \t]*\n', '\n', text_10k)
+        text_10k = re.sub('\n[ \t]*<[Pp][Aa][Gg][Ee]>[ \t]*\n', '\n', text_10k)
+        
+        for k, regex_tuple in item_regex_tuples.items():
+            item_result = get_item_plain_text(text_10k, regex_tuple[0], regex_tuple[1])
+            
+            if item_result:
+                results[k] = item_result
+                results[f'i_{k}_extraction_algorithm'] = 'text_regex'
     
     alt_filing_period = get_alt_filing_period(results['whole_text'])
     if alt_filing_period:
