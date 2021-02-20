@@ -235,8 +235,11 @@ def get_10k_items(text_10k):
         return text_list
     
     def get_alt_filing_period(text):
-        alt_filing_period_regex = re.compile(r'for the (fiscal )?year ended[^\w](.+?\d{4})', re.IGNORECASE | re.MULTILINE)
-        date_regex = re.compile(r'([a-z]+) (\d\d?), (\d{4})', re.IGNORECASE)
+        # stage 1 regex is more lenient than stage 2, but is only run on the first 1000 chars as the filing period text
+        # is always at the top of the document. If stage 1 fails, fall back to a stricter stage 2.
+        filing_period_regex_stg_1 = re.compile(r'for\s+the\s+(fiscal\s+)?year[\s\-]+ended(.+?,[ \n]\d{4})', re.IGNORECASE | re.DOTALL)
+        filing_period_regex_stg_2 = re.compile(r'for\s+the\s+(fiscal\s+)?year[\s\-]+ended[^\w](.+?, \d{4})', re.IGNORECASE | re.DOTALL)
+        date_regex = re.compile(r'([a-z]+)\s+(\d\d?),[ \n](\d{4})', re.IGNORECASE)
         month_dict = {'january' : '01',
                       'february' : '02',
                       'march' : '03',
@@ -250,9 +253,15 @@ def get_10k_items(text_10k):
                       'november' : '11',
                       'december' : '12'}
         
-        text_search = re.search(alt_filing_period_regex, text)
-        if text_search:
-            date_search = re.search(date_regex, text_search.group(2))
+        # run regexes
+        search_result = re.search(filing_period_regex_stg_1, text[:1000])
+        
+        if not search_result:
+            search_result = re.search(filing_period_regex_stg_2, text)
+        
+        # parse result
+        if search_result:
+            date_search = re.search(date_regex, search_result.group(2))
             if date_search:
                 year = date_search.group(3)
                 
@@ -331,8 +340,8 @@ def get_10k_items(text_10k):
                 tag.extract()
             
         # get whole text of document and sanitize
-        whole_text = sanitize(soup.text)
-        whole_text = re.sub('\n[ \t]*\d+[ \t]*\n', '\n', whole_text)
+        whole_text_raw = sanitize(soup.text)
+        whole_text = re.sub(r'\n[ \t]*\d+[ \t]*\n', '\n', whole_text_raw)
         results = {'whole_text' : whole_text,
                    'content_type' : 'html'}
             
@@ -357,12 +366,14 @@ def get_10k_items(text_10k):
         if risk_factors:
             results['risk_factors'] = risk_factors
             results['num_risk_factors'] = len(risk_factors)
+                
     else:
-        results = {'whole_text' : sanitize(text_10k),
+        whole_text_raw = sanitize(text_10k)
+        results = {'whole_text' : whole_text_raw,
                    'content_type' : 'plaintext'}
         
-        text_10k = re.sub('\n[ \t]*\d+[ \t]*\n', '\n', text_10k)
-        text_10k = re.sub('\n[ \t]*<[Pp][Aa][Gg][Ee]>[ \t]*\n', '\n', text_10k)
+        text_10k = re.sub(r'\n[ \t]*\d+[ \t]*\n', '\n', text_10k)
+        text_10k = re.sub(r'\n[ \t]*<[Pp][Aa][Gg][Ee]>[ \t]*\n', '\n', text_10k)
         
         for k, regex_tuple in item_regex_tuples.items():
             item_result = get_item_plain_text(text_10k, regex_tuple[0], regex_tuple[1])
@@ -371,7 +382,7 @@ def get_10k_items(text_10k):
                 results[k] = item_result
                 results[f'i_{k}_extraction_algorithm'] = 'text_regex'
     
-    alt_filing_period = get_alt_filing_period(results['whole_text'])
+    alt_filing_period = get_alt_filing_period(whole_text_raw)
     if alt_filing_period:
             results['alt_filing_period'] = alt_filing_period
 
