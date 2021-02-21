@@ -222,7 +222,7 @@ def get_10k_items(text_10k):
                 
         return risk_factors
     
-    def tags_to_str_list(tags):
+    def tag_list_to_str(tags):
         text_list = []
         
         for tag in tags:
@@ -232,7 +232,7 @@ def get_10k_items(text_10k):
             except AttributeError:
                 pass
             
-        return text_list
+        return '\n'.join(text_list)
     
     def get_alt_filing_period(text):
         # stage 1 regex is more lenient than stage 2, but is only run on the first 1000 chars as the filing period text
@@ -279,6 +279,31 @@ def get_10k_items(text_10k):
             return '{}{}{}'.format(year, month, day)
         except:
             return None
+        
+    def remove_finance_tables(tags):
+        tags_html = [str(tag) for tag in tags]
+        tags_html = '<html><body>' + ''.join(tags_html) + '</body></html>'
+        tags_soup = BeautifulSoup(tags_html, 'lxml')
+        
+        for tag in tags_soup.find_all('table'):
+            num_trs = len(tag.find_all('tr'))
+            num_tds = len(tag.find_all('td'))
+            
+            if num_trs >= 3 and num_tds >= num_trs*2: # most non-finance tables have 2 tr tags
+                if (tag.text.count('$') >= 2 or tag.text.count('%') >= 2):
+                    tag.extract()
+                    continue
+                
+                # second stage table filtering
+                digits_count = len(re.findall(r'\d', tag.text))
+                alphanumeric_count = len(re.findall(r'\w', tag.text))
+                percent_numbers = digits_count / alphanumeric_count
+
+                if percent_numbers > 0.35 and len(tag.text) > 80:
+                    tag.extract()
+                    continue
+                
+        return tags_soup.body.findChildren(recursive=False)
         
     # Main function start
     href_regex = re.compile(r'^\s*item[^a-z0-9]*\d{1,2}[AB]?', re.IGNORECASE)
@@ -350,9 +375,10 @@ def get_10k_items(text_10k):
         for k, regex_tuple in item_regex_tuples.items():
             item_result = get_item_tags(all_10k_tags, regex_tuple[0], regex_tuple[1])
             if item_result:
-                results[k] = '\n'.join(tags_to_str_list(item_result))
-                #results['i_'+k+'_html'] = '\n'.join([str(tag) for tag in item_result])
+                results[k] = tag_list_to_str(item_result)
+                results[k+'_no_finance_tables'] = tag_list_to_str(remove_finance_tables(item_result))
                 results[f'i_{k}_extraction_algorithm'] = 'html'
+                
                 continue
     
             item_result_plaintext = get_item_plain_text(results['whole_text'], regex_tuple[0], regex_tuple[1])
@@ -380,6 +406,7 @@ def get_10k_items(text_10k):
             
             if item_result:
                 results[k] = item_result
+                #TODO: Remove financial tables in plaintext 10K
                 results[f'i_{k}_extraction_algorithm'] = 'text_regex'
     
     alt_filing_period = get_alt_filing_period(whole_text_raw)
