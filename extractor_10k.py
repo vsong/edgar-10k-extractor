@@ -297,7 +297,7 @@ def get_10k_items(text_10k):
                 # second stage table filtering
                 digits_count = len(re.findall(r'\d', tag.text))
                 alphanumeric_count = len(re.findall(r'\w', tag.text))
-                percent_numbers = digits_count / alphanumeric_count
+                percent_numbers = digits_count / alphanumeric_count if alphanumeric_count != 0 else 0
 
                 if percent_numbers > 0.35 and len(tag.text) > 80:
                     tag.extract()
