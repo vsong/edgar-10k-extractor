@@ -376,7 +376,7 @@ def get_10k_items(text_10k):
             item_result = get_item_tags(all_10k_tags, regex_tuple[0], regex_tuple[1])
             if item_result:
                 results[k] = tag_list_to_str(item_result)
-                results[k+'_no_finance_tables'] = tag_list_to_str(remove_finance_tables(item_result))
+                results[f'i_{k}_no_finance_tables'] = tag_list_to_str(remove_finance_tables(item_result))
                 results[f'i_{k}_extraction_algorithm'] = 'html'
                 
                 continue
