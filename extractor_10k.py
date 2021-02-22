@@ -281,7 +281,11 @@ def get_10k_items(text_10k):
             return None
         
     def remove_finance_tables(tags):
-        tags_html = [str(tag) for tag in tags]
+        try:
+            tags_html = [str(tag) for tag in tags]
+        except RecursionError: # extremely rare occurance ...  1 in 100,000. Cause unknown.
+            return tags
+
         tags_html = '<html><body>' + ''.join(tags_html) + '</body></html>'
         tags_soup = BeautifulSoup(tags_html, 'lxml')
         
